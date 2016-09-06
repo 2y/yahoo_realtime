@@ -1,7 +1,7 @@
 <?php
 /*
 $realtime = new YahooRealtime();
-$realtime->setQuery('ラクスル -オマエ…ハタラク -ラクスルマガジン');
+$realtime->setQuery('Bizcast OR BitStar OR ビズキャスト OR ビットスター OR @bitstar_tokyo');
 $item_list = $realtime->search();
 var_dump($item_list);
 */
