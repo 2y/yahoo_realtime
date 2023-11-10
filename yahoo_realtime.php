@@ -1,36 +1,27 @@
 <?php
-/*
-$realtime = new YahooRealtime();
-$realtime->setQuery('Bizcast OR BitStar OR ビズキャスト OR ビットスター OR @bitstar_tokyo');
-$item_list = $realtime->search();
-var_dump($item_list);
-*/
+
+#$realtime = new YahooRealtime();
+#$realtime->setQuery('BitStar OR ビットスター OR @bitstar_tokyo');
+#$item_list = $realtime->search();
+#var_dump($item_list);
+
 
 class YahooRealtime {
-    const URL_SEARCH = 'http://realtime.search.yahoo.co.jp/search?p=';
+    const URL_SEARCH = 'https://search.yahoo.co.jp/realtime/search?p=';
 
     private $query;
 
     // {{{ analysis
     private static function analysis($html) {
         $item = [];
-        preg_match('/data-time="([0-9]+)"/', $html, $match);
+        preg_match('/<p class="Tweet_body(.+)<\/p>/', $html, $match);
+        $item['message'] = strip_tags($match[0]);
+        preg_match('/<time class="Tweet_time__[0-9a-zA-Z]+"><a href="(.+)" target=/', $html, $match);
+        $item['url'] = substr($match[1], 0, strpos($match[1], '?'));
+        preg_match('/status\/([0-9]+)/', $item['url'], $match);
         $item['time'] = (int)$match[1];
-        preg_match('/<h2>(.+)<\/h2>/s', $html, $match);
-        $item['message'] = strip_tags($match[1]);
-        preg_match('/<a href="(.+)" title="/', $html, $match);
-        $item['url'] = htmlspecialchars_decode($match[1]);
-        if (strpos($html, '<span class="ref ptn_3">Facebook</span>')) {
-            $item['type']        = 'facebook';
-            $item['is_facebook'] = true;
-            $item['is_twitter']  = false;
-        } elseif (strpos($html, '<span class="ref">Twitter</span>')) {
-            $item['type']        = 'twitter';
-            $item['is_facebook'] = false;
-            $item['is_twitter']  = true;
-        }
-        preg_match('/class="nam" target="_blank">(.+)<\/a>/', $html, $match);
-        $item['name'] = $match[1];
+        preg_match('/<span class="Tweet_authorName__[0-9a-zA-Z]+">(.+)<\/span>/', $html, $match);
+        $item['name'] = strip_tags($match[0]);
         return $item;
     }
     // }}}
@@ -44,18 +35,22 @@ class YahooRealtime {
     public function search() {
         $html = file_get_contents(self::URL_SEARCH . urlencode($this->query));
         $list = [];
-        $pos  = strpos($html, '<div class="cnt cf" data-time="');
+        $pos  = strpos($html, '<div class="Tweet_TweetContainer');
         if ($pos === false) {
+            #echo self::URL_SEARCH . urlencode($this->query);
+            #exit('dead');
             return $list;
         }
         $html = substr($html, $pos);
-        $pos  = strpos($html, '<div class="cnt cf" data-time="');
-        while (strpos($html, '<div class="cnt cf" data-time="') !== false) {
-            $pos  = strpos($html, '<!--/.cnt end-->');
+        #echo substr($html, 0, 2000);exit;
+        while (strpos($html, '<div class="Tweet_TweetContainer', 10) !== false) {
+            $pos  = strpos($html, '<div class="Tweet_TweetContainer', 10);
             $item = substr($html, 0, $pos);
-            $list[] = self::analysis($item);
-            $html = substr($html, $pos + 17);
+            $item = self::analysis($item);
+            $list[$item['time']] = $item;
+            $html = substr($html, $pos);
         }
+        ksort($item);
         return $list;
     }
     // }}}
